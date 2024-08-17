@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+
+<?php
+
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require __DIR__ . '/../vendor/autoload.php';
+} elseif (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require __DIR__ . '/vendor/autoload.php';
+}
+
+use App\CreateTagCommand;
+use App\MoveTicketsCommand;
+use Symfony\Component\Console\Application;
+
+// Create a new Symfony Console application instance
+$application = new Application();
+
+// Add your custom CLI command to the application
+$application->add(new MoveTicketsCommand());
+$application->add(new CreateTagCommand());
+
+// Check if the script is being accessed via a web browser or CLI
+if (php_sapi_name() === 'cli') {
+    // If CLI, run the console application
+    $application->run();
+} else {
+    // If accessed via web, display a simple message or perform an action
+    echo "<h1>Welcome to the Jira Ticket Mover Tool</h1>";
+    echo "<p>This tool is intended to be run as a command-line application.</p>";
+    echo "<p>Please use the CLI to interact with this tool.</p>";
+}

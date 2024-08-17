@@ -1,0 +1,27 @@
+{
+  "name": "tzkoshi/generate-change-set",
+  "autoload": {
+    "psr-4": {
+      "App\\": "./src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Tsvetan Koshutanski",
+      "email": "tz.koshutanski@inv.bg"
+    }
+  ],
+  "require": {
+    "symfony/console": "^6.4",
+    "guzzlehttp/guzzle": "^7.9",
+    "monolog/monolog": "^3.7",
+    "lesstif/php-jira-rest-client": "^5.8",
+    "symfony/process": "^6.4"
+  },
+  "bin": [
+    "dist/changeset.phar"
+  ],
+  "post-install-cmd": [
+    "@php build/phar.php"
+  ]
+}
