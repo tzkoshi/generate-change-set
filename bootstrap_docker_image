@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# This script creates a inv.bg docker image from stratch. It first builds a bare image
+# and then executes the dev ansible playbook on it. After that, thre resulting container
+# is commited.
+#
+IMAGE_NAME=${IMAGE_NAME:-"docker.inv.bg/generate-changeset"}
+IMAGE_TAG=${IMAGE_TAG:-"latest"}
+
+echo -n "Create multi-architecture builder (could fail if already exist)... "
+docker buildx create --name inv-builder --driver docker-container --use --platform "linux/amd64,linux/arm64"
+docker buildx inspect --bootstrap inv-builder
+echo "Done"
+
+echo -n "Building image ${IMAGE_NAME}... "
+docker buildx build --push --provenance=false -t "${IMAGE_NAME}:${IMAGE_TAG}" --platform "linux/amd64,linux/arm64" --rm . || exit 1
+echo "Done"
