@@ -43,6 +43,11 @@ class CreateTagCommand extends Command
         $dryRun = $input->getOption('dry-run');
         $origin = $input->getOption('origin');
 
+        if ($this->commitHasDTag($commit)) {
+            $this->logger->info("Commit $commit already has a D.XXX tag. Skipping tagging.");
+            return Command::SUCCESS;
+        }
+
         $newTag = $this->generateNextTag();
 
         if ($newTag) {
@@ -57,6 +62,24 @@ class CreateTagCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    private function commitHasDTag(string $commit): bool
+    {
+        // List all tags that point to the given commit and match the pattern D.XXX
+        $process = new Process(['git', 'tag', '--contains', $commit]);
+        $process->run();
+
+        if ($process->isSuccessful()) {
+            $tags = explode("\n", trim($process->getOutput()));
+            foreach ($tags as $tag) {
+                if (preg_match('/^D\.\d+$/', $tag)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private function generateNextTag(): ?string
