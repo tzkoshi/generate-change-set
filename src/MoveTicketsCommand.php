@@ -24,6 +24,7 @@ class MoveTicketsCommand extends Command
     protected static $defaultName = 'move-tickets';
 
     private $logger;
+    private IssueService $issueService;
 
     public function __construct()
     {
@@ -52,6 +53,8 @@ class MoveTicketsCommand extends Command
         $endHash = $input->getArgument('end-hash') ?? $this->getCurrentHeadCommitHash();
         $dryRun = $input->getOption('dry-run');
 
+        $this->createIssueService($input);
+
         // Get the Git tag for the end-hash
         $gitTag = $this->getGitTagForCommit($endHash);
 
@@ -63,6 +66,15 @@ class MoveTicketsCommand extends Command
         $this->moveTicketsToTest($tickets, $gitTag, $input, $dryRun);
 
         return Command::SUCCESS;
+    }
+
+    private function createIssueService(InputInterface $input): void
+    {
+        $this->issueService = new IssueService(new ArrayConfiguration([
+            'jiraHost'     => $input->getOption('jira-url'),
+            'jiraUser'     => $input->getOption('jira-user'),
+            'jiraPassword' => $input->getOption('jira-password'),
+        ]));
     }
 
     private function getLastTagCommitHash(): string
@@ -141,15 +153,9 @@ class MoveTicketsCommand extends Command
 
     private function moveTicketsToTest(array $tickets, ?string $gitTag, InputInterface $input, bool $dryRun): void
     {
-        $issueService = new IssueService(new ArrayConfiguration([
-            'jiraHost'     => $input->getOption('jira-url'),
-            'jiraUser'     => $input->getOption('jira-user'),
-            'jiraPassword' => $input->getOption('jira-password'),
-        ]));
-
         foreach ($tickets as $ticket) {
             try {
-                $issue = $issueService->get($ticket);
+                $issue = $this->issueService->get($ticket);
                 $ticketUrl = trim($input->getOption('jira-url'), '/') . "/browse/" . $ticket;
                 $statusMessage = "Ticket: $ticket (Current status: " . $issue->fields->status->name . ") URL: $ticketUrl";
                 if ($this->shouldSkipChangeForStatus($issue->fields->status->name)) {
@@ -167,11 +173,11 @@ class MoveTicketsCommand extends Command
                     $transition = new Transition();
                     $transition->setTransitionName("TO TEST");
 
-                    $issueService->transition($ticket, $transition);
+                    $this->issueService->transition($ticket, $transition);
                     if ($gitTag) {
                         $this->addLabelToTicket($ticket, $gitTag);
                     }
-                    $this->addCommentToTicket($issueService, $ticket, $gitTag);
+                    $this->addCommentToTicket($ticket, $gitTag);
 
                     $this->logger->info("Moved $ticket to 'To Test' status. URL: $ticketUrl");
                 }
@@ -184,10 +190,8 @@ class MoveTicketsCommand extends Command
     private function addLabelToTicket(string $ticket, string $label)
     {
         try {
-            $issueService = new IssueService();
-
             // Fetch the current issue
-            $issue = $issueService->get($ticket);
+            $issue = $this->issueService->get($ticket);
 
             // Get current labels and add the new one
             $labels = $issue->fields->labels ?? [];
@@ -197,7 +201,7 @@ class MoveTicketsCommand extends Command
                 // Update the issue with the new label
                 $issueField = new IssueField(true);
                 $issueField->labels[] = $labels;
-                $issueService->update($ticket, $issueField);
+                $this->issueService->update($ticket, $issueField);
 
                 $this->logger->info("Added Git tag $label as a label to ticket $ticket.");
             }
@@ -206,7 +210,7 @@ class MoveTicketsCommand extends Command
         }
     }
 
-    private function addCommentToTicket(IssueService $issueService, string $ticket, ?string $gitTag)
+    private function addCommentToTicket(string $ticket, ?string $gitTag)
     {
         $comment = new Comment();
 
@@ -219,7 +223,7 @@ class MoveTicketsCommand extends Command
         $comment->setBody($commentBody);
 
         try {
-            $issueService->addComment($ticket, $comment);
+            $this->issueService->addComment($ticket, $comment);
         } catch (JiraException $e) {
             $this->logger->error("Failed to add comment to ticket $ticket: " . $e->getMessage());
         }
@@ -229,6 +233,5 @@ class MoveTicketsCommand extends Command
     private function shouldSkipChangeForStatus(string $status)
     {
         return in_array($status, ['To Test', 'Done', 'Closed']);
-
     }
 }
