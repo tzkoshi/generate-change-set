@@ -1,0 +1,14 @@
+{
+  "name": "generate-change-set",
+  "version": "1.0.0",
+  "description": "",
+  "main": ".commitlintrc.js",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "husky": "^9.1.5"
+  }
+}
