@@ -137,7 +137,7 @@ class CreateTagCommand extends Command
             $this->logger->info("Created new tag: $tag on commit $commit");
 
             // Optionally, push the tag to the remote repository
-            $pushProcess = new Process(['git', 'push', $origin, $tag]);
+            $pushProcess = new Process(['git', 'push', $origin, $tag, '--no-verify']);
             $pushProcess->run();
 
             if ($pushProcess->isSuccessful()) {
